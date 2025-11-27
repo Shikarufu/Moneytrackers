@@ -1,0 +1,310 @@
+
+
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Money tracker</title>
+    <link rel="icon" href="picture/money.png" />
+
+    <style>
+      body {
+        font-family: Noto Sans, Arial, sans-serif;
+        padding: 18px;
+        background: #f7f8fa;
+        color: #111;
+      }
+      .card {
+        background: white;
+        padding: 16px;
+        border-radius: 20px;
+        box-shadow: 0 6px 18px rgba(20, 20, 20, 0.06);
+        max-width: 780px;
+        margin: auto;
+        margin-top: 40px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 10px 0;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      input[type="number"] {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #1abf54;
+        color: white;
+        transition: 1.2s;
+      }
+      button.primary:hover{
+        opacity: 0.5;
+        transform: translate(3px, 5px) scale(1.2);
+      }
+      button.primary:active{
+        opacity: 0.4;
+        transform: translate(3px, 5px) scaleX(1.2);
+
+      }
+      button.ghost {
+        background: #eee;
+        color: #333;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+        font-size: 14px;
+      }
+      .totals-box {
+        margin-top: 15px;
+        background: #f2f4f7;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.8;
+      }
+      .totals-box span {
+        font-weight: bold;
+      }
+      .deleteBtn {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h1>បញ្ចូលតម្លៃជារៀល (KHR)</h1>
+      <div style="font-size: 13px; color: #666">
+        បញ្ចូលតម្លៃ (លេខគត់) → ចុច "បញ្ចូល" → វានឹងរក្សាទុក និងបូកសរុប។
+      </div>
+
+      <div class="row" style="margin-top: 12px">
+        <input
+          id="amountInput"
+          type="number"
+          placeholder="បញ្ចូលចំនួនជា រៀល (ឧ. 5000)"
+          min="0"
+        />
+        <button class="primary" id="addBtn">បញ្ចូល</button>
+        <!-- <button class="ghost" id="clearBtn">លុបទាំងអស់</button> -->
+      </div>
+
+      <!-- 🔥 ALL TOTALS (DAILY, MONTHLY, YEARLY, OVERALL) -->
+      <div class="totals-box">
+        📅 សរុបប្រចាំថ្ងៃ (ថ្ងៃនេះ): <span id="dayTotal">0 ៛</span> <br />
+        📆 សរុបប្រចាំខែ (<span id="currentMonthLabel"></span>): <span id="monthTotal">0 ៛</span> <br />
+        📅 សរុបប្រចាំឆ្នាំ (<span id="currentYearLabel"></span>): <span id="yearTotal">0 ៛</span> <br />
+        🧮 សរុបទាំងអស់: <span id="allTotal">0 ៛</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ល.រ</th>
+            <th>ថ្ងៃ-ខែ-ឆ្នាំ / ម៉ោង</th>
+            <th>តម្លៃ (៛)</th>
+            <th>លុប</th>
+          </tr>
+        </thead>
+        <tbody id="entriesTbody"></tbody>
+      </table>
+    </div>
+
+    <script>
+      const STORAGE_KEY = "moneyEntries_khr_v1";
+
+      const currencyFmt = new Intl.NumberFormat("km-KH", {
+        style: "currency",
+        currency: "KHR",
+        maximumFractionDigits: 0,
+      });
+
+      function formatDateTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleString("km-KH", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function loadEntries() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return [];
+        }
+      }
+
+      function saveEntries(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      }
+
+      function deleteEntry(index) {
+        const entries = loadEntries();
+        entries.splice(index, 1);
+        saveEntries(entries);
+        render();
+      }
+
+      function render() {
+        const tbody = document.getElementById("entriesTbody");
+        tbody.innerHTML = "";
+
+        const entries = loadEntries().sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        );
+
+        let idx = 1;
+
+        entries.forEach((e, i) => {
+          const tr = document.createElement("tr");
+
+          tr.innerHTML = `
+            <td>${idx++}</td>
+            <td>${formatDateTime(e.date)}</td>
+            <td>${currencyFmt.format(e.amount).replace(/\u00A0/g, " ")}</td>
+            <td><button class="deleteBtn">X</button></td>
+          `;
+
+          tr.querySelector(".deleteBtn").onclick = () => {
+            if (confirm("ចង់លុបទិន្ន័យនេះមែនទេ?")) deleteEntry(i);
+          };
+
+          tbody.appendChild(tr);
+        });
+
+        updateTotals(entries);
+
+        const now = new Date();
+        document.getElementById("currentMonthLabel").textContent =
+          now.toLocaleString("km-KH", { month: "long", year: "numeric" });
+
+        document.getElementById("currentYearLabel").textContent =
+          now.getFullYear();
+      }
+
+      function updateTotals(entries) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        const d = now.getDate();
+
+        let daySum = 0;
+        let monthSum = 0;
+        let yearSum = 0;
+        let allSum = 0;
+
+        for (const e of entries) {
+          const date = new Date(e.date);
+          const amt = Number(e.amount) || 0;
+
+          allSum += amt;
+
+          if (date.getFullYear() === y) {
+            yearSum += amt;
+
+            if (date.getMonth() === m) {
+              monthSum += amt;
+
+              if (date.getDate() === d) {
+                daySum += amt;
+              }
+            }
+          }
+        }
+
+        document.getElementById("dayTotal").textContent =
+          currencyFmt.format(daySum).replace(/\u00A0/g, " ");
+
+        document.getElementById("monthTotal").textContent =
+          currencyFmt.format(monthSum).replace(/\u00A0/g, " ");
+
+        document.getElementById("yearTotal").textContent =
+          currencyFmt.format(yearSum).replace(/\u00A0/g, " ");
+
+        document.getElementById("allTotal").textContent =
+          currencyFmt.format(allSum).replace(/\u00A0/g, " ");
+      }
+
+      function addEntry(amount) {
+        if (!amount || amount <= 0) return;
+
+        const entries = loadEntries();
+        entries.push({
+          amount: Math.round(Number(amount)),
+          date: new Date().toISOString(),
+        });
+
+        saveEntries(entries);
+        render();
+      }
+
+      document.getElementById("addBtn").addEventListener("click", () => {
+        const input = document.getElementById("amountInput");
+        const val = Number(input.value);
+
+        if (!val || val <= 0) {
+          alert("សូមបញ្ចូលចំនួនត្រឹមត្រូវ (លើស 0)។");
+          return;
+        }
+
+        addEntry(val);
+        input.value = "";
+        input.focus();
+      });
+
+      document
+        .getElementById("amountInput")
+        .addEventListener("keydown", ev => {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            document.getElementById("addBtn").click();
+          }
+        });
+
+    //   document.getElementById("clearBtn").addEventListener("click", () => {
+    //     if (!confirm("លុបទាំងអស់មែនទេ? (មិនអាចត្រឡប់បាន)")) return;
+    //     localStorage.removeItem(STORAGE_KEY);
+    //     render();
+    //   });
+
+      render();
+    </script>
+  </body>
+</html>

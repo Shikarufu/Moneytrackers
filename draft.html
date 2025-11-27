@@ -1,0 +1,311 @@
+<!-- <!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Money tracker</title>
+    <link rel="icon" href="picture/money.png" />
+
+    <style>
+      body {
+        font-family: Noto Sans, Arial, sans-serif;
+        padding: 18px;
+        background: #f7f8fa;
+        color: #111;
+      }
+      .card {
+        background: white;
+        padding: 16px;
+        border-radius: 20px;
+        box-shadow: 0 6px 18px rgba(20, 20, 20, 0.06);
+        max-width: 720px;
+        margin: auto;
+        margin-top: 100px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 10px 0;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      input[type="number"] {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      button {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #2563eb;
+        color: white;
+      }
+      button.ghost {
+        background: #eee;
+        color: #333;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+        font-size: 14px;
+      }
+      .small {
+        font-size: 13px;
+        color: #666;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h1>បញ្ចូលតម្លៃជារៀល (KHR)</h1>
+      <div class="small">
+        បញ្ចូលតម្លៃ (លេខគត់) → ចុច "បញ្ចូល" → វានឹងបង្ហាញថ្ងៃខែឆ្នាំ និងបូកសរុប។
+      </div>
+
+      <div class="row" style="margin-top: 12px">
+        <input
+          id="amountInput"
+          type="number"
+          placeholder="បញ្ចូលចំនួនជា រៀល (ឧ. 5000)"
+          min="0"
+        />
+        <button class="primary" id="addBtn">បញ្ចូល</button>
+        <button class="ghost" id="clearBtn">លុបទាំងអស់</button>
+      </div>
+
+      <div class="actions">
+        <div class="small">
+          សរុបប្រចាំខែ (<span id="currentMonthLabel"></span>):
+          <span id="monthTotal">0 ៛</span>
+        </div>
+        <div style="margin-left: auto" class="small">
+          សរុបទាំងអស់: <span id="allTotal">0 ៛</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ល.រ</th>
+            <th>ថ្ងៃ-ខែ-ឆ្នាំ / ម៉ោង</th>
+            <th>តម្លៃ (៛)</th>
+            <th>លុប</th>
+          </tr>
+        </thead>
+        <tbody id="entriesTbody"></tbody>
+      </table>
+    </div>
+
+    <script>
+      const STORAGE_KEY = "moneyEntries_khr_v1";
+
+      const currencyFmt = new Intl.NumberFormat("km-KH", {
+        style: "currency",
+        currency: "KHR",
+        maximumFractionDigits: 0,
+      });
+
+      function formatDateTime(iso) {
+        const d = new Date(iso);
+        try {
+          return d.toLocaleString("km-KH", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        } catch {
+          return d.toLocaleString();
+        }
+      }
+
+      function loadEntries() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return [];
+        }
+      }
+
+      function saveEntries(list) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      }
+
+      // Auto delete old entries (over 35 days)
+      function removeOldEntries(maxDays = 35) {
+        const now = Date.now();
+        const limit = maxDays * 24 * 60 * 60 * 1000;
+
+        const entries = loadEntries();
+        const filtered = entries.filter((e) => {
+          const age = now - new Date(e.date).getTime();
+          return age <= limit;
+        });
+
+        saveEntries(filtered);
+        return filtered;
+      }
+
+      function deleteEntry(index) {
+        const entries = loadEntries();
+        entries.splice(index, 1);
+        saveEntries(entries);
+        render();
+      }
+
+      function render() {
+        const tbody = document.getElementById("entriesTbody");
+        tbody.innerHTML = "";
+
+        const entries = removeOldEntries(35);
+        entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let idx = 1;
+
+        entries.forEach((e, i) => {
+          const tr = document.createElement("tr");
+
+          const tdIndex = document.createElement("td");
+          tdIndex.textContent = idx++;
+
+          const tdDate = document.createElement("td");
+          tdDate.textContent = formatDateTime(e.date);
+
+          const tdAmount = document.createElement("td");
+          tdAmount.textContent = currencyFmt
+            .format(e.amount)
+            .replace(/\u00A0/g, " ");
+
+          const tdDelete = document.createElement("td");
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "X";
+          delBtn.style.background = "#ef4444";
+          delBtn.style.color = "white";
+          delBtn.style.border = "none";
+          delBtn.style.padding = "4px 8px";
+          delBtn.style.borderRadius = "6px";
+          delBtn.style.cursor = "pointer";
+
+          delBtn.onclick = () => {
+            if (confirm("តើអ្នកចង់លុបទិន្ន័យនេះនេះមែនទេ?")) {
+              deleteEntry(i);
+            }
+          };
+
+          tdDelete.appendChild(delBtn);
+
+          tr.appendChild(tdIndex);
+          tr.appendChild(tdDate);
+          tr.appendChild(tdAmount);
+          tr.appendChild(tdDelete);
+          tbody.appendChild(tr);
+        });
+
+        updateTotals(entries);
+
+        const now = new Date();
+        document.getElementById("currentMonthLabel").textContent =
+          now.toLocaleString("km-KH", { year: "numeric", month: "long" });
+      }
+
+      function updateTotals(entries) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+
+        let monthSum = 0;
+        let allSum = 0;
+
+        for (const e of entries) {
+          const d = new Date(e.date);
+          const amt = Number(e.amount) || 0;
+
+          allSum += amt;
+          if (d.getFullYear() === y && d.getMonth() === m) {
+            monthSum += amt;
+          }
+        }
+
+        document.getElementById("monthTotal").textContent = currencyFmt
+          .format(monthSum)
+          .replace(/\u00A0/g, " ");
+
+        document.getElementById("allTotal").textContent = currencyFmt
+          .format(allSum)
+          .replace(/\u00A0/g, " ");
+      }
+
+      function addEntry(amount) {
+        if (!amount || amount <= 0) return;
+
+        const entries = loadEntries();
+        entries.push({
+          amount: Math.round(Number(amount)),
+          date: new Date().toISOString(),
+        });
+
+        saveEntries(entries);
+        render();
+      }
+
+      document.getElementById("addBtn").addEventListener("click", () => {
+        const input = document.getElementById("amountInput");
+        const val = Number(input.value);
+
+        if (!val || val <= 0) {
+          alert("សូមបញ្ចូលចំនួនត្រឹមត្រូវ (លើស 0)");
+          return;
+        }
+
+        addEntry(val);
+        input.value = "";
+        input.focus();
+      });
+
+      document
+        .getElementById("amountInput")
+        .addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            document.getElementById("addBtn").click();
+          }
+        });
+
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        if (!confirm("តើអ្នកចង់លុបទាំងអស់? (មិនអាចយកទិន្ន័យមកវិញបានទេ)")) return;
+        localStorage.removeItem(STORAGE_KEY);
+        render();
+      });
+
+      render();
+    </script>
+  </body>
+</html> 
+-->
