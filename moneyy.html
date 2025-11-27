@@ -1,14 +1,10 @@
-
-
-
 <!DOCTYPE html>
-
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Money tracker</title>
+    <title>Money Tracker</title>
     <link rel="icon" href="picture/money.png" />
 
     <style>
@@ -55,18 +51,21 @@
         color: white;
         transition: 1.2s;
       }
-      button.primary:hover{
+      button.primary:hover {
         opacity: 0.5;
         transform: translate(3px, 5px) scale(1.2);
       }
-      button.primary:active{
+      button.primary:active {
         opacity: 0.4;
         transform: translate(3px, 5px) scaleX(1.2);
-
       }
-      button.ghost {
-        background: #eee;
-        color: #333;
+      .deleteBtn {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 6px;
+        cursor: pointer;
       }
       table {
         width: 100%;
@@ -91,20 +90,26 @@
       .totals-box span {
         font-weight: bold;
       }
-      .deleteBtn {
-        background: #ef4444;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 6px;
-        cursor: pointer;
+      .typewrite {
+        color: Orange;
+        font-size: 25px;
       }
     </style>
   </head>
 
   <body>
     <div class="card">
-      <h1>បញ្ចូលតម្លៃជារៀល (KHR)</h1>
+      <center>
+        <h1
+          class="typewrite"
+          data-period="2000"
+          data-type='[ "⛽️ តម្លៃប្រើប្រាស់សាំង ⛽️" ]'
+        >
+          <span class="wrap"></span>
+        </h1>
+      </center>
+
+      <br>
       <div style="font-size: 13px; color: #666">
         បញ្ចូលតម្លៃ (លេខគត់) → ចុច "បញ្ចូល" → វានឹងរក្សាទុក និងបូកសរុប។
       </div>
@@ -113,18 +118,14 @@
         <input
           id="amountInput"
           type="number"
-          placeholder="បញ្ចូលចំនួនជា រៀល (ឧ. 5000)"
+          placeholder="បញ្ចូលចំនួនលុយ ឧ.5000៛"
           min="0"
         />
         <button class="primary" id="addBtn">បញ្ចូល</button>
-        <!-- <button class="ghost" id="clearBtn">លុបទាំងអស់</button> -->
       </div>
 
-      <!-- 🔥 ALL TOTALS (DAILY, MONTHLY, YEARLY, OVERALL) -->
+      <!-- ONLY TOTAL -->
       <div class="totals-box">
-        <!-- 📅 សរុបប្រចាំថ្ងៃ (ថ្ងៃនេះ): <span id="dayTotal">0 ៛</span> <br />
-        📆 សរុបប្រចាំខែ (<span id="currentMonthLabel"></span>): <span id="monthTotal">0 ៛</span> <br />
-        📅 សរុបប្រចាំឆ្នាំ (<span id="currentYearLabel"></span>): <span id="yearTotal">0 ៛</span> <br /> -->
         🧮 សរុបទាំងអស់: <span id="allTotal">0 ៛</span>
       </div>
 
@@ -191,7 +192,6 @@
         );
 
         let idx = 1;
-
         entries.forEach((e, i) => {
           const tr = document.createElement("tr");
 
@@ -210,53 +210,15 @@
         });
 
         updateTotals(entries);
-
-        const now = new Date();
-        document.getElementById("currentMonthLabel").textContent =
-          now.toLocaleString("km-KH", { month: "long", year: "numeric" });
-
-        document.getElementById("currentYearLabel").textContent =
-          now.getFullYear();
       }
 
       function updateTotals(entries) {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = now.getMonth();
-        const d = now.getDate();
-
-        let daySum = 0;
-        let monthSum = 0;
-        let yearSum = 0;
         let allSum = 0;
 
         for (const e of entries) {
-          const date = new Date(e.date);
           const amt = Number(e.amount) || 0;
-
           allSum += amt;
-
-          if (date.getFullYear() === y) {
-            yearSum += amt;
-
-            if (date.getMonth() === m) {
-              monthSum += amt;
-
-              if (date.getDate() === d) {
-                daySum += amt;
-              }
-            }
-          }
         }
-
-        document.getElementById("dayTotal").textContent =
-          currencyFmt.format(daySum).replace(/\u00A0/g, " ");
-
-        document.getElementById("monthTotal").textContent =
-          currencyFmt.format(monthSum).replace(/\u00A0/g, " ");
-
-        document.getElementById("yearTotal").textContent =
-          currencyFmt.format(yearSum).replace(/\u00A0/g, " ");
 
         document.getElementById("allTotal").textContent =
           currencyFmt.format(allSum).replace(/\u00A0/g, " ");
@@ -298,11 +260,58 @@
           }
         });
 
-    //   document.getElementById("clearBtn").addEventListener("click", () => {
-    //     if (!confirm("លុបទាំងអស់មែនទេ? (មិនអាចត្រឡប់បាន)")) return;
-    //     localStorage.removeItem(STORAGE_KEY);
-    //     render();
-    //   });
+      // Typewriter effect
+      var TxtType = function(el, toRotate, period) {
+        this.toRotate = toRotate;
+        this.el = el;
+        this.loopNum = 0;
+        this.period = parseInt(period, 10) || 2000;
+        this.txt = '';
+        this.tick();
+        this.isDeleting = false;
+      };
+
+      TxtType.prototype.tick = function() {
+        var i = this.loopNum % this.toRotate.length;
+        var fullTxt = this.toRotate[i];
+
+        if (this.isDeleting) {
+          this.txt = fullTxt.substring(0, this.txt.length - 1);
+        } else {
+          this.txt = fullTxt.substring(0, this.txt.length + 1);
+        }
+
+        this.el.innerHTML = '<span class="wrap">'+this.txt+'</span>';
+
+        var that = this;
+        var delta = 200 - Math.random() * 100;
+
+        if (this.isDeleting) { delta /= 2; }
+
+        if (!this.isDeleting && this.txt === fullTxt) {
+          delta = this.period;
+          this.isDeleting = true;
+        } else if (this.isDeleting && this.txt === '') {
+          this.isDeleting = false;
+          this.loopNum++;
+          delta = 500;
+        }
+
+        setTimeout(function() {
+          that.tick();
+        }, delta);
+      };
+
+      window.onload = function() {
+        var elements = document.getElementsByClassName('typewrite');
+        for (var i=0; i<elements.length; i++) {
+          var toRotate = elements[i].getAttribute('data-type');
+          var period = elements[i].getAttribute('data-period');
+          if (toRotate) {
+            new TxtType(elements[i], JSON.parse(toRotate), period);
+          }
+        }
+      };
 
       render();
     </script>
