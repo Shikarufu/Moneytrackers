@@ -268,8 +268,24 @@
         addBtn.click();
       }
     });
+    
+    function autoDeleteOldEntries() {
+      const entries = loadEntries();
+      const now = Date.now();
+
+      // 35 days in milliseconds
+      const DAY_35 = 35 * 24 * 60 * 60 * 1000;
+
+      // Keep only entries newer than 35 days
+      const filtered = entries.filter(e => {
+        return now - new Date(e.date).getTime() < DAY_35;
+      });
+
+      saveEntries(filtered);
+    }
 
     // Initialize
+    autoDeleteOldEntries();
     updateButtonState();
     render();
   </script>
