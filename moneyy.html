@@ -91,6 +91,10 @@
       text-align: left;
       font-size: 14px;
     }
+    th{
+      font-style: italic;
+      font-size: 14px;
+    }
 
     .totals-box {
       margin-top: 15px;
@@ -236,7 +240,8 @@
       const entries = loadEntries();
 
       // Button active if input > 0 OR there is at least one entry
-      if (Number(input.value) > 0 || entries.length > 0) {
+      // if (Number(input.value) > 0 || entries.length > 0) {
+      if(Number(input.value) > 0){
         btn.classList.remove("inactive");
         btn.disabled = false;
       } else {
@@ -268,7 +273,6 @@
         addBtn.click();
       }
     });
-    
     function autoDeleteOldEntries() {
       const entries = loadEntries();
       const now = Date.now();
@@ -283,6 +287,7 @@
 
       saveEntries(filtered);
     }
+
 
     // Initialize
     autoDeleteOldEntries();
