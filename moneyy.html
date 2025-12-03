@@ -1,282 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Money Tracker</title>
-  <link rel="icon" href="picture/money.png" />
-
-  <style>
-    body {
-      font-family: Noto Sans, Arial, sans-serif;
-      padding: 18px;
-      background: #f7f8fa;
-      color: #111;
-    }
-
-    .card {
-      background: white;
-      padding: 16px;
-      border-radius: 20px;
-      box-shadow: 0 6px 18px rgba(20, 20, 20, 0.06);
-      max-width: 780px;
-      margin: auto;
-      margin-top: 40px;
-    }
-
-    h1 {
-      font-size: 20px;
-      margin: 0 0 10px 0;
-    }
-
-    .row {
-      display: flex;
-      gap: 8px;
-      margin: 10px 0;
-    }
-
-    input[type="number"] {
-      flex: 1;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-    }
-
-    button {
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-      transition: 0.1s;
-    }
-
-    button.primary {
-      background: #17a94a;
-      color: white;
-    }
-
-    button.primary:active {
-      background: #055b23;
-    }
-
-    button.primary.inactive {
-      background: #c7e7cc;
-      color: #fff;
-      cursor: not-allowed;
-    }
-
-    .deleteBtn {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 14px;
-    }
-
-    th,
-    td {
-      padding: 8px 10px;
-      border-bottom: 1px solid #eee;
-      text-align: left;
-      font-size: 14px;
-    }
-
-    th {
-      font-style: italic;
-      font-size: 14px;
-    }
-
-    .totals-box {
-      margin-top: 15px;
-      background: #f2f4f7;
-      padding: 12px;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.8;
-    }
-
-    .totals-box span {
-      font-weight: bold;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="card">
-    <center>
-      <h1>⛽️ តម្លៃប្រើប្រាស់សាំង ⛽️</h1>
-    </center>
-
-    <br>
-    <div style="font-size: 13px; color: #666">
-      បញ្ចូលតម្លៃ (លេខគត់) → ចុច "បញ្ចូល" → វានឹងរក្សាទុក និងបូកសរុប។
-    </div>
-
-    <div class="row" style="margin-top: 12px">
-      <input id="amountInput" type="number" placeholder="បញ្ចូលចំនួនលុយ ឧ.5000៛" min="0" />
-      <button class="primary inactive" id="addBtn" disabled>បញ្ចូល</button>
-    </div>
-
-    <div class="totals-box">
-      🧮 សរុបទាំងអស់: <span id="allTotal">0 ៛</span>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>ល.រ</th>
-          <th>ថ្ងៃ-ខែ-ឆ្នាំ / ម៉ោង</th>
-          <th>តម្លៃ (៛)</th>
-          <th>លុប</th>
-        </tr>
-      </thead>
-      <tbody id="entriesTbody"></tbody>
-    </table>
-  </div>
-
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-
-  <script>
-    // your firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyDZ2u7Ks7_bDfT5vQ_P21TNSYy3W7JqWbY",
-      authDomain: "money-6bf4e.firebaseapp.com",
-      databaseURL: "https://money-6bf4e-default-rtdb.firebaseio.com",
-      projectId: "money-6bf4e",
-      storageBucket: "money-6bf4e.firebasestorage.app",
-      messagingSenderId: "90195614776",
-      appId: "1:90195614776:web:9b382fa698045e83841acd",
-      measurementId: "G-V65RB624WP"
-    };
-
-    // init firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    const DAY_35 = 35 * 24 * 60 * 60 * 1000;
-
-    // Check auto-reset
-    const metaRef = db.ref("meta/lastReset");
-
-    metaRef.once("value").then(snapshot => {
-      const lastReset = snapshot.val();
-      const now = Date.now();
-
-      if (!lastReset || now - lastReset > DAY_35) {
-        db.ref("entries").remove();
-        metaRef.set(now);
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Money Tracker</title>
+    <link rel="icon" href="picture/money.png" />
+    <style>
+      body {
+        font-family: Noto Sans, Arial, sans-serif;
+        padding: 18px;
+        background: #f7f8fa;
+        color: #111;
       }
-    });
-
-    const currencyFmt = new Intl.NumberFormat("km-KH", {
-      style: "currency",
-      currency: "KHR",
-      maximumFractionDigits: 0,
-    });
-
-    function formatDateTime(iso) {
-      const d = new Date(iso);
-      return d.toLocaleString("km-KH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-
-    const input = document.getElementById("amountInput");
-    const addBtn = document.getElementById("addBtn");
-
-    function updateButtonState() {
-      if (Number(input.value) > 0) {
-        addBtn.classList.remove("inactive");
-        addBtn.disabled = false;
-      } else {
-        addBtn.classList.add("inactive");
-        addBtn.disabled = true;
+      .card {
+        background: white;
+        padding: 16px;
+        border-radius: 20px;
+        box-shadow: 0 6px 18px rgba(20, 20, 20, 0.06);
+        max-width: 780px;
+        margin: auto;
+        margin-top: 40px;
       }
-    }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 10px 0;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0;
+        flex-wrap: wrap;
+      }
+      input[type="number"],
+      select {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+      /* Make select compact on mobile */
+      select {
+        max-width: 200px;
+        font-size: 14px;
+        padding: 6px 10px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background: url('data:image/svg+xml;utf8,<svg fill="gray" height="12" viewBox="0 0 24 24" width="12" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>')
+          no-repeat right 10px center;
+        background-size: 12px;
+      }
+      button {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.1s;
+      }
+      button.primary {
+        background: #17a94a;
+        color: white;
+      }
+      button.primary:active {
+        background: #055b23;
+      }
+      button.primary.inactive {
+        background: #c7e7cc;
+        color: #fff;
+        cursor: not-allowed;
+      }
+      .deleteBtn {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+        font-size: 14px;
+      }
+      th {
+        font-style: normal;
+      }
+      .totals-box {
+        margin-top: 15px;
+        background: #f2f4f7;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.8;
+      }
+      .totals-box span {
+        font-weight: bold;
+      }
 
-    input.addEventListener("input", updateButtonState);
+      /* Responsive adjustments */
+      @media (max-width: 500px) {
+        input[type="number"],
+        select,
+        button {
+          font-size: 14px;
+          padding: 6px 10px;
+        }
+        select {
+          max-width: 150px;
+        }
+        .row {
+          gap: 5px;
+        }
+        option{
+          max-width: 100px;
 
-    // Add entry
-    addBtn.addEventListener("click", () => {
-      const val = Number(input.value);
-      if (val <= 0) return;
+        }
+      
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <center><h1>⛽️ តម្លៃប្រើប្រាស់សាំង ⛽️</h1></center>
+      <br />
+      <div style="font-size: 16px; color: #666">
+        ជ្រើសរើសវិធីបញ្ចូល → បញ្ចូលទិន្ន័យ → វានឹងរក្សាទុក និងបូកសរុប។
+      </div>
 
-      const entryRef = db.ref("entries").push();
-      entryRef.set({
-        amount: val,
-        date: new Date().toISOString()
+      <div class="row" style="margin-top: 15px">
+        <select id="modeSelect">
+          <option value="input">ទឹកប្រាក់</option>
+          <option value="gas">លីត្រ</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <input
+          id="amountInput"
+          type="number"
+          placeholder="បញ្ចូលចំនួន"
+          min="0"
+        />
+        <button class="primary inactive" id="addBtn" disabled>បញ្ចូល</button>
+      </div>
+
+      <div class="totals-box">
+        🧮 សរុបទាំងអស់: <span id="allTotal">0 ៛</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ល.រ</th>
+            <th>ថ្ងៃ-ខែ-ឆ្នាំ / ម៉ោង</th>
+            <th>តម្លៃ (៛)</th>
+            <th>លុប</th>
+          </tr>
+        </thead>
+        <tbody id="entriesTbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyDZ2u7Ks7_bDfT5vQ_P21TNSYy3W7JqWbY",
+        authDomain: "money-6bf4e.firebaseapp.com",
+        databaseURL: "https://money-6bf4e-default-rtdb.firebaseio.com",
+        projectId: "money-6bf4e",
+        storageBucket: "money-6bf4e.firebasestorage.app",
+        messagingSenderId: "90195614776",
+        appId: "1:90195614776:web:9b382fa698045e83841acd",
+        measurementId: "G-V65RB624WP",
+      };
+      const app = firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+      const DAY_35 = 35 * 24 * 60 * 60 * 1000;
+
+      const metaRef = db.ref("meta/lastReset");
+      metaRef.once("value").then((snapshot) => {
+        const lastReset = snapshot.val(),
+          now = Date.now();
+        if (!lastReset || now - lastReset > DAY_35) {
+          db.ref("entries").remove();
+          metaRef.set(now);
+        }
       });
 
-      input.value = "";
-      updateButtonState();
-    });
+      const currencyFmt = new Intl.NumberFormat("km-KH", {
+        style: "currency",
+        currency: "KHR",
+        maximumFractionDigits: 0,
+      });
+      function formatDateTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleString("km-KH", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
 
-    // live update from firebase
-    db.ref("entries").on("value", snapshot => {
-      const data = snapshot.val() || {};
-      const list = Object.entries(data).map(([key, value]) => ({
-        id: key,
-        ...value
-      }));
+      const input = document.getElementById("amountInput");
+      const addBtn = document.getElementById("addBtn");
+      const modeSelect = document.getElementById("modeSelect");
+      const GAS_PRICE = 3800; // Riels per liter
 
-      list.sort((a, b) => new Date(b.date) - new Date(a.date));
+      function updateButtonState() {
+        addBtn.disabled = Number(input.value) <= 0;
+        if (Number(input.value) > 0) addBtn.classList.remove("inactive");
+        else addBtn.classList.add("inactive");
+      }
+      input.addEventListener("input", updateButtonState);
 
-      render(list);
-    });
-
-    function render(entries) {
-      const tbody = document.getElementById("entriesTbody");
-      tbody.innerHTML = "";
-
-      let idx = 1;
-      entries.forEach(e => {
-        const tr = document.createElement("tr");
-
-        tr.innerHTML = `
-          <td>${idx++}</td>
-          <td>${formatDateTime(e.date)}</td>
-          <td>${currencyFmt.format(e.amount).replace(/\u00A0/g, " ")}</td>
-          <td><button class="deleteBtn">X</button></td>
-        `;
-
-        tr.querySelector(".deleteBtn").onclick = () => {
-          if (confirm("លុបទិន្ន័យនេះមែនទេ?")) {
-            db.ref("entries/" + e.id).remove();
-          }
-        };
-
-        tbody.appendChild(tr);
+      addBtn.addEventListener("click", () => {
+        let val = Number(input.value);
+        if (val <= 0) return;
+        if (modeSelect.value === "gas") val = val * GAS_PRICE;
+        const entryRef = db.ref("entries").push();
+        entryRef.set({ amount: val, date: new Date().toISOString() });
+        input.value = "";
+        updateButtonState();
       });
 
-      updateTotals(entries);
-    }
+      db.ref("entries").on("value", (snapshot) => {
+        const data = snapshot.val() || {};
+        const list = Object.entries(data).map(([key, value]) => ({
+          id: key,
+          ...value,
+        }));
+        list.sort((a, b) => new Date(b.date) - new Date(a.date));
+        render(list);
+      });
 
-    function updateTotals(entries) {
-      let sum = 0;
-      for (const e of entries) sum += e.amount;
-      document.getElementById("allTotal").textContent =
-        currencyFmt.format(sum).replace(/\u00A0/g, " ");
-    }
-  </script>
+      function render(entries) {
+        const tbody = document.getElementById("entriesTbody");
+        tbody.innerHTML = "";
+        let idx = 1;
+        entries.forEach((e) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${idx++}</td><td>${formatDateTime(
+            e.date
+          )}</td><td>${currencyFmt
+            .format(e.amount)
+            .replace(
+              /\u00A0/g,
+              " "
+            )}</td><td><button class="deleteBtn">X</button></td>`;
+          tr.querySelector(".deleteBtn").onclick = () => {
+            if (confirm("លុបទិន្ន័យនេះមែនទេ?"))
+              db.ref("entries/" + e.id).remove();
+          };
+          tbody.appendChild(tr);
+        });
+        updateTotals(entries);
+      }
 
-</body>
+      function updateTotals(entries) {
+        let sum = 0;
+        for (const e of entries) sum += e.amount;
+        document.getElementById("allTotal").textContent = currencyFmt
+          .format(sum)
+          .replace(/\u00A0/g, " ");
+      }
+    </script>
+  </body>
 
 </html>
