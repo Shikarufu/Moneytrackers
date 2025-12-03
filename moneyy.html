@@ -188,13 +188,13 @@
       };
       const app = firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
-      const DAY_35 = 35 * 24 * 60 * 60 * 1000;
+      const DAY_32 = 32 * 24 * 60 * 60 * 1000;
 
       const metaRef = db.ref("meta/lastReset");
       metaRef.once("value").then((snapshot) => {
         const lastReset = snapshot.val(),
           now = Date.now();
-        if (!lastReset || now - lastReset > DAY_35) {
+        if (!lastReset || now - lastReset > DAY_32) {
           db.ref("entries").remove();
           metaRef.set(now);
         }
