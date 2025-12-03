@@ -63,9 +63,9 @@
       background: #055b23;
     }
 
-    /* inactive state */
     button.primary.inactive {
-      background: #a0d6a3;
+      background: #c7e7cc;
+      color: #fff;
       cursor: not-allowed;
     }
 
@@ -91,7 +91,8 @@
       text-align: left;
       font-size: 14px;
     }
-    th{
+
+    th {
       font-style: italic;
       font-size: 14px;
     }
@@ -124,7 +125,7 @@
 
     <div class="row" style="margin-top: 12px">
       <input id="amountInput" type="number" placeholder="បញ្ចូលចំនួនលុយ ឧ.5000៛" min="0" />
-      <button class="primary" id="addBtn">បញ្ចូល</button>
+      <button class="primary inactive" id="addBtn" disabled>បញ្ចូល</button>
     </div>
 
     <div class="totals-box">
@@ -144,8 +145,42 @@
     </table>
   </div>
 
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+
   <script>
-    const STORAGE_KEY = "moneyEntries_khr_v1";
+    // your firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDZ2u7Ks7_bDfT5vQ_P21TNSYy3W7JqWbY",
+      authDomain: "money-6bf4e.firebaseapp.com",
+      databaseURL: "https://money-6bf4e-default-rtdb.firebaseio.com",
+      projectId: "money-6bf4e",
+      storageBucket: "money-6bf4e.firebasestorage.app",
+      messagingSenderId: "90195614776",
+      appId: "1:90195614776:web:9b382fa698045e83841acd",
+      measurementId: "G-V65RB624WP"
+    };
+
+    // init firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const DAY_35 = 35 * 24 * 60 * 60 * 1000;
+
+    // Check auto-reset
+    const metaRef = db.ref("meta/lastReset");
+
+    metaRef.once("value").then(snapshot => {
+      const lastReset = snapshot.val();
+      const now = Date.now();
+
+      if (!lastReset || now - lastReset > DAY_35) {
+        db.ref("entries").remove();
+        metaRef.set(now);
+      }
+    });
 
     const currencyFmt = new Intl.NumberFormat("km-KH", {
       style: "currency",
@@ -164,136 +199,84 @@
       });
     }
 
-    function loadEntries() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      try {
-        return JSON.parse(raw);
-      } catch {
-        return [];
+    const input = document.getElementById("amountInput");
+    const addBtn = document.getElementById("addBtn");
+
+    function updateButtonState() {
+      if (Number(input.value) > 0) {
+        addBtn.classList.remove("inactive");
+        addBtn.disabled = false;
+      } else {
+        addBtn.classList.add("inactive");
+        addBtn.disabled = true;
       }
     }
 
-    function saveEntries(list) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    }
+    input.addEventListener("input", updateButtonState);
 
-    function deleteEntry(index) {
-      const entries = loadEntries();
-      entries.splice(index, 1);
-      saveEntries(entries);
-      render();
-    }
+    // Add entry
+    addBtn.addEventListener("click", () => {
+      const val = Number(input.value);
+      if (val <= 0) return;
 
-    function render() {
+      const entryRef = db.ref("entries").push();
+      entryRef.set({
+        amount: val,
+        date: new Date().toISOString()
+      });
+
+      input.value = "";
+      updateButtonState();
+    });
+
+    // live update from firebase
+    db.ref("entries").on("value", snapshot => {
+      const data = snapshot.val() || {};
+      const list = Object.entries(data).map(([key, value]) => ({
+        id: key,
+        ...value
+      }));
+
+      list.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      render(list);
+    });
+
+    function render(entries) {
       const tbody = document.getElementById("entriesTbody");
       tbody.innerHTML = "";
 
-      const entries = loadEntries().sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
-      );
-
       let idx = 1;
-      entries.forEach((e, i) => {
+      entries.forEach(e => {
         const tr = document.createElement("tr");
+
         tr.innerHTML = `
           <td>${idx++}</td>
           <td>${formatDateTime(e.date)}</td>
           <td>${currencyFmt.format(e.amount).replace(/\u00A0/g, " ")}</td>
           <td><button class="deleteBtn">X</button></td>
         `;
+
         tr.querySelector(".deleteBtn").onclick = () => {
-          if (confirm("ចង់លុបទិន្ន័យនេះមែនទេ?")) deleteEntry(i);
+          if (confirm("លុបទិន្ន័យនេះមែនទេ?")) {
+            db.ref("entries/" + e.id).remove();
+          }
         };
+
         tbody.appendChild(tr);
       });
 
       updateTotals(entries);
-      updateButtonState();
     }
 
     function updateTotals(entries) {
-      let allSum = 0;
-      for (const e of entries) {
-        allSum += Number(e.amount) || 0;
-      }
+      let sum = 0;
+      for (const e of entries) sum += e.amount;
       document.getElementById("allTotal").textContent =
-        currencyFmt.format(allSum).replace(/\u00A0/g, " ");
+        currencyFmt.format(sum).replace(/\u00A0/g, " ");
     }
-
-    function addEntry(amount) {
-      if (!amount || amount <= 0) return;
-
-      const entries = loadEntries();
-      entries.push({
-        amount: Math.round(Number(amount)),
-        date: new Date().toISOString(),
-      });
-
-      saveEntries(entries);
-      render();
-    }
-
-    function updateButtonState() {
-      const input = document.getElementById("amountInput");
-      const btn = document.getElementById("addBtn");
-      const entries = loadEntries();
-
-      // Button active if input > 0 OR there is at least one entry
-      // if (Number(input.value) > 0 || entries.length > 0) {
-      if(Number(input.value) > 0){
-        btn.classList.remove("inactive");
-        btn.disabled = false;
-      } else {
-        btn.classList.add("inactive");
-        btn.disabled = true;
-      }
-    }
-
-    const input = document.getElementById("amountInput");
-    const addBtn = document.getElementById("addBtn");
-
-    input.addEventListener("input", updateButtonState);
-
-    addBtn.addEventListener("click", () => {
-      const val = Number(input.value);
-      if (!val || val <= 0) {
-        alert("សូមបញ្ចូលចំនួនត្រឹមត្រូវ (លើស 0)។");
-        return;
-      }
-      addEntry(val);
-      input.value = "";
-      input.focus();
-      updateButtonState();
-    });
-
-    input.addEventListener("keydown", ev => {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        addBtn.click();
-      }
-    });
-    function autoDeleteOldEntries() {
-      const entries = loadEntries();
-      const now = Date.now();
-
-      // 35 days in milliseconds
-      const DAY_35 = 35 * 24 * 60 * 60 * 1000;
-
-      // Keep only entries newer than 35 days
-      const filtered = entries.filter(e => {
-        return now - new Date(e.date).getTime() < DAY_35;
-      });
-
-      saveEntries(filtered);
-    }
-
-
-    // Initialize
-    autoDeleteOldEntries();
-    updateButtonState();
-    render();
   </script>
+
 </body>
 
 </html>
