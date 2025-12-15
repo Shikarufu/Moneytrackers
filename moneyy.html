@@ -21,7 +21,7 @@
         max-width: 780px;
         margin: auto;
         margin-top: 40px;
-        display: none; /* hidden until login */
+        display: none;
       }
       h1 {
         font-size: 20px;
@@ -42,14 +42,11 @@
         border: 1px solid #ddd;
         border-radius: 8px;
       }
-      /* Make select compact on mobile */
       select {
         max-width: 200px;
         font-size: 14px;
         padding: 6px 10px;
         appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
         background: url('data:image/svg+xml;utf8,<svg fill="gray" height="12" viewBox="0 0 24 24" width="12" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>')
           no-repeat right 10px center;
         background-size: 12px;
@@ -77,7 +74,6 @@
       .deleteBtn {
         background: #ef4444;
         color: white;
-        border: none;
         padding: 4px 8px;
         border-radius: 6px;
         cursor: pointer;
@@ -94,9 +90,6 @@
         text-align: left;
         font-size: 14px;
       }
-      th {
-        font-style: normal;
-      }
       .totals-box {
         margin-top: 15px;
         background: #f2f4f7;
@@ -108,8 +101,6 @@
       .totals-box span {
         font-weight: bold;
       }
-
-      /* Small login box */
       #loginBox {
         max-width: 420px;
         margin: 60px auto;
@@ -119,16 +110,11 @@
         border-radius: 14px;
         box-shadow: 0 6px 18px rgba(20, 20, 20, 0.06);
       }
-      #loginBox h2 {
-        margin: 0 0 12px 0;
-      }
       #loginError {
         color: #ef4444;
         display: none;
         margin-top: 8px;
       }
-
-      /* Responsive adjustments */
       @media (max-width: 500px) {
         input[type="number"],
         select,
@@ -139,45 +125,49 @@
         select {
           max-width: 150px;
         }
-        .row {
-          gap: 5px;
-        }
         option {
           max-width: 100px;
         }
       }
     </style>
   </head>
+
   <body>
-    <!-- Simple Login Box -->
+    <!-- LOGIN -->
     <div id="loginBox">
       <h2>🔒 បញ្ចូលពាក្យសម្ងាត់</h2>
       <input id="passwordInput" type="password" placeholder="Password / PIN" />
       <div style="margin-top: 10px">
         <button id="loginBtn" class="primary">Login</button>
       </div>
-      <div id="loginError">លេខសម្ងាត់មិនត្រឹមត្រូវ</div>
-      <!-- <div style="font-size: 13px; color: #666; margin-top: 10px">
-        Note: this is a simple client-side password (not Firebase Auth). Change
-        APP_PASSWORD in the code.
-      </div> -->
+      <div id="loginError">Password incorrect!</div>
     </div>
 
-    <!-- Main card (hidden until login) -->
+    <!-- MAIN CARD -->
     <div class="card">
+      <!-- Logout button -->
+      <button
+        onclick="logout()"
+        style="
+          float: right;
+          background: #ef4444;
+          color: white;
+          padding: 6px 10px;
+          border-radius: 6px;
+          margin-bottom: 10px;
+        "
+      >
+        Logout
+      </button>
+
       <center><h1>⛽️ តម្លៃប្រើប្រាស់សាំង ⛽️</h1></center>
-      <br />
-      <div style="font-size: 16px; color: #666">
-        ជ្រើសរើសវិធីបញ្ចូល → បញ្ចូលទិន្ន័យ → វានឹងរក្សាទុក និងបូកសរុប។
-      </div>
 
       <div class="row" style="margin-top: 15px">
         <select id="modeSelect">
           <option value="input">ទឹកប្រាក់</option>
           <option value="gas">លីត្រ</option>
         </select>
-        <!-- Month filter -->
-        <select id="monthFilter" style="max-width: 220px">
+        <select id="monthFilter">
           <option value="current">ខែនេះ</option>
           <option value="previous">ខែមុន</option>
           <option value="all">ទាំងអស់</option>
@@ -204,6 +194,7 @@
             <th>ល.រ</th>
             <th>ថ្ងៃ-ខែ-ឆ្នាំ / ម៉ោង</th>
             <th>តម្លៃ (៛)</th>
+            <th>លីត្រ</th>
             <th>លុប</th>
           </tr>
         </thead>
@@ -216,12 +207,11 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-      // ------------ CONFIG ------------
-      const APP_PASSWORD = "757619"; // <-- Change this to your desired password/PIN
-      const GAS_PRICE = 3800; // Riels per liter
+      const APP_PASSWORD = "757619";
+      const GAS_PRICE = 3800;
+      // const LITER_TOLERANCE = 300;
       const DAY_32 = 32 * 24 * 60 * 60 * 1000;
 
-      // Firebase config (your existing config)
       const firebaseConfig = {
         apiKey: "AIzaSyDZ2u7Ks7_bDfT5vQ_P21TNSYy3W7JqWbY",
         authDomain: "money-6bf4e.firebaseapp.com",
@@ -230,14 +220,12 @@
         storageBucket: "money-6bf4e.firebasestorage.app",
         messagingSenderId: "90195614776",
         appId: "1:90195614776:web:9b382fa698045e83841acd",
-        measurementId: "G-V65RB624WP",
       };
 
-      // ------------ INIT ------------
       const app = firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
 
-      // Auto-delete older entries if lastReset is older than DAY_32
+      // Auto delete
       const metaRef = db.ref("meta/lastReset");
       metaRef.once("value").then((snapshot) => {
         const lastReset = snapshot.val(),
@@ -248,7 +236,6 @@
         }
       });
 
-      // ------------ FORMATTERS ------------
       const currencyFmt = new Intl.NumberFormat("km-KH", {
         style: "currency",
         currency: "KHR",
@@ -266,45 +253,52 @@
         });
       }
 
-      // ------------ UI ELEMENTS ------------
+      // Login system
       const loginBox = document.getElementById("loginBox");
       const passwordInput = document.getElementById("passwordInput");
       const loginBtn = document.getElementById("loginBtn");
       const loginError = document.getElementById("loginError");
-
       const card = document.querySelector(".card");
-      const input = document.getElementById("amountInput");
-      const addBtn = document.getElementById("addBtn");
-      const modeSelect = document.getElementById("modeSelect");
-      const monthFilter = document.getElementById("monthFilter");
 
-      const entriesTbody = document.getElementById("entriesTbody");
-      const allTotalEl = document.getElementById("allTotal");
+      // 🔥 AUTO LOGIN (remember device)
+      if (localStorage.getItem("loggedIn") === "yes") {
+        loginBox.style.display = "none";
+        card.style.display = "block";
+      }
 
-      // store full list from firebase and filter locally
-      let fullList = [];
-
-      // ------------ LOGIN LOGIC ------------
       loginBtn.addEventListener("click", doLogin);
       passwordInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") doLogin();
       });
 
       function doLogin() {
-        const pass = String(passwordInput.value || "");
-        if (pass === APP_PASSWORD) {
+        if (passwordInput.value === APP_PASSWORD) {
+          // Remember this device
+          localStorage.setItem("loggedIn", "yes");
+
           loginBox.style.display = "none";
           card.style.display = "block";
-          loginError.style.display = "none";
-
-          // Focus the amount input after login
-          setTimeout(() => input.focus(), 120);
         } else {
           loginError.style.display = "block";
         }
       }
 
-      // ------------ INPUT BUTTON STATE ------------
+      // 🔥 Logout (remove remembered login)
+      function logout() {
+        localStorage.removeItem("loggedIn");
+        location.reload();
+      }
+
+      // Add entry
+      const input = document.getElementById("amountInput");
+      const addBtn = document.getElementById("addBtn");
+      const modeSelect = document.getElementById("modeSelect");
+      const monthFilter = document.getElementById("monthFilter");
+      const entriesTbody = document.getElementById("entriesTbody");
+      const allTotalEl = document.getElementById("allTotal");
+
+      let fullList = [];
+
       function updateButtonState() {
         addBtn.disabled = Number(input.value) <= 0;
         if (Number(input.value) > 0) addBtn.classList.remove("inactive");
@@ -312,25 +306,89 @@
       }
       input.addEventListener("input", updateButtonState);
 
-      // ------------ ADD ENTRY ------------
       addBtn.addEventListener("click", () => {
-        let val = Number(input.value);
-        if (val <= 0) return;
-        if (modeSelect.value === "gas") val = val * GAS_PRICE;
-        const entryRef = db.ref("entries").push();
-        entryRef.set({ amount: val, date: new Date().toISOString() });
+        let num = Number(input.value);
+        if (num <= 0) return;
+
+        let amount = 0;
+        let liter = 0;
+
+        if (modeSelect.value === "gas") {
+          liter = num;
+          amount = liter * GAS_PRICE;
+        } else {
+          amount = num;
+          let guess = Math.round(amount / GAS_PRICE);
+          liter =
+            Math.abs(amount - guess * GAS_PRICE) <= LITER_TOLERANCE ? guess : 0;
+        }
+
+        db.ref("entries").push({
+          amount: amount,
+          liter: liter,
+          date: new Date().toISOString(),
+        });
+
         input.value = "";
         updateButtonState();
       });
 
-      // ------------ LISTEN TO FIREBASE AND APPLY FILTER ------------
+      const GAS_PRICES = [3800, 3850, 4000]; // Support all gas types
+      const LITER_TOLERANCE = 400; // Increased to allow rounding
+
+      addBtn.addEventListener("click", () => {
+        let num = Number(input.value);
+        if (num <= 0) return;
+
+        let amount = 0;
+        let liter = 0;
+
+        if (modeSelect.value === "gas") {
+          // User enters liters
+          liter = num;
+
+          // Auto detect best price
+          // Example: 3L -> try 3*3800, 3*3850, 3*4000
+          amount = Math.min(...GAS_PRICES.map((p) => Math.abs(num * p)));
+        } else {
+          // User enters amount
+          amount = num;
+
+          // Auto detect liter using best gas price
+          // Try all gas prices
+          let bestLiter = 0;
+
+          for (let price of GAS_PRICES) {
+            let guess = Math.round(amount / price);
+            let diff = Math.abs(amount - guess * price);
+
+            if (diff <= LITER_TOLERANCE && guess > 0) {
+              bestLiter = guess;
+              break;
+            }
+          }
+
+          liter = bestLiter;
+        }
+
+        // Save to Firebase
+        db.ref("entries").push({
+          amount: amount,
+          liter: liter,
+          date: new Date().toISOString(),
+        });
+
+        input.value = "";
+        updateButtonState();
+      });
+
+      // Listen for changes
       db.ref("entries").on("value", (snapshot) => {
         const data = snapshot.val() || {};
-        fullList = Object.entries(data).map(([key, value]) => ({
-          id: key,
-          ...value,
+        fullList = Object.entries(data).map(([id, v]) => ({
+          id,
+          ...v,
         }));
-        // sort newest first
         fullList.sort((a, b) => new Date(b.date) - new Date(a.date));
         applyFilter();
       });
@@ -343,7 +401,6 @@
         const thisMonth = now.getMonth() + 1;
         const thisYear = now.getFullYear();
 
-        // Previous month logic
         let prevMonth = thisMonth - 1;
         let prevYear = thisYear;
         if (prevMonth === 0) {
@@ -367,31 +424,33 @@
               d.getMonth() + 1 === prevMonth && d.getFullYear() === prevYear
             );
           });
-        } // else "all"
+        }
 
         render(filtered);
       }
 
-      // ------------ RENDER & TOTALS ------------
       function render(entries) {
         entriesTbody.innerHTML = "";
         let idx = 1;
+
         entries.forEach((e) => {
           const tr = document.createElement("tr");
-          tr.innerHTML = `<td>${idx++}</td><td>${formatDateTime(
-            e.date
-          )}</td><td>${currencyFmt
-            .format(e.amount)
-            .replace(
-              /\u00A0/g,
-              " "
-            )}</td><td><button class="deleteBtn">X</button></td>`;
+          tr.innerHTML = `
+            <td>${idx++}</td>
+            <td>${formatDateTime(e.date)}</td>
+            <td>${currencyFmt.format(e.amount).replace(/\u00A0/g, " ")}</td>
+            <td>${e.liter || 0}</td>
+            <td><button class="deleteBtn">X</button></td>
+          `;
+
           tr.querySelector(".deleteBtn").onclick = () => {
             if (confirm("លុបទិន្ន័យនេះមែនទេ?"))
               db.ref("entries/" + e.id).remove();
           };
+
           entriesTbody.appendChild(tr);
         });
+
         updateTotals(entries);
       }
 
@@ -402,9 +461,6 @@
           .format(sum)
           .replace(/\u00A0/g, " ");
       }
-
-      // ------------ initial UI state ------------
-      updateButtonState();
     </script>
   </body>
 </html>
